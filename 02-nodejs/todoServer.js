@@ -179,6 +179,10 @@ app.delete('/todos/:id', (req, res) => {
   }
 })
 
+app.use((req, res) => {
+   res.status(404).send('Not Found');
+})
+
 app.listen(port, () => {
   console.log(`App is started at port : ${port}`)
 })
