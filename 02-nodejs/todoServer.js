@@ -58,7 +58,7 @@ const folderPath = "./myTodos/"
 // Method to fetch all the todos from myTodos folder
 var loadMytodos = () => {
   if(!fs.existsSync(folderPath)){
-    return loadMytodos
+    return myTodos
   }
 
   let files = fs.readdirSync(folderPath);
