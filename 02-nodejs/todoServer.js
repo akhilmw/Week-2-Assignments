@@ -39,11 +39,148 @@
 
   Testing the server - run `npm run test-todoServer` command in terminal
  */
-const express = require('express');
+const express = require("express");
 const bodyParser = require('body-parser');
+const fs = require("fs");
+const path = require("path");
+const {v4 : uuidv4} = require('uuid');
+
+
+const port = 3000;
 
 const app = express();
 
 app.use(bodyParser.json());
+
+var myTodos = []
+const folderPath = "./myTodos/"
+
+// Method to fetch all the todos from myTodos folder
+var loadMytodos = () => {
+  if(!fs.existsSync(folderPath)){
+    return loadMytodos
+  }
+
+  let files = fs.readdirSync(folderPath);
+  files.forEach((fileName) => {
+    const filePath = path.join(folderPath, fileName)
+    try {
+      if(fileName.endsWith('.json')) {
+        let content = fs.readFileSync(filePath, 'utf-8');
+        let jsonData = JSON.parse(content)
+        myTodos.push(jsonData)
+      }
+    } catch (error) {
+      console.log(`Some error occured while reading files : ${error.message}`)
+    }
+  })
+}
+loadMytodos();
+
+// Method to write todo into the folder
+
+var addTodoToFolder = (todoId, todoData) => {
+  const filePath = path.join(folderPath, `${todoId}.json`);
+  if(fs.existsSync(filePath) && isUpdate){
+    fs.writeFileSync(filePath, JSON.stringify(todoData));
+  }else{
+  fs.writeFileSync(filePath, JSON.stringify(todoData));
+  }
+}
+
+// method to update data in file
+var updateFile = (todoId, todoData) => {
+  const filePath = path.join(folderPath, `${todoId}.json`);
+  if(fs.existsSync(filePath)){
+    fs.writeFileSync(filePath, JSON.stringify(todoData));
+  }
+}
+
+// method to delete file in Folder
+var deleteFile = (todoId) => {
+  const filePath = path.join(folderPath, `${todoId}.json`)
+  if(fs.existsSync(filePath)){
+    fs.unlinkSync(filePath)
+  }
+}
+
+
+
+//  1.GET /todos - Retrieve all todo items
+app.get('/todos', (req, res) => {
+  console.log(myTodos)
+  res.status(200).send(myTodos)
+})
+
+// 2.GET /todos/:id - Retrieve a specific todo item by ID
+app.get('/todos/:id', (req, res) => {
+  const todoId = req.params.id
+  let todoWithIdFound = false;
+  myTodos.forEach((todo) => {
+    if(todo.id === todoId){
+      todoWithIdFound = true;
+      res.status(200).send(todo)
+    }
+  })
+  if(!todoWithIdFound){
+    res.status(404).send(`Todo With id ${todoId} not found, enter a valid Id`)
+  }
+})
+
+// 3. POST /todos - Create a new todo item
+app.post('/todos', (req, res) => {
+  newTodoId = uuidv4();
+  todoBody = req.body
+  todoBody.id = newTodoId
+  myTodos.push(todoBody)
+  addTodoToFolder(newTodoId, todoBody, false);
+
+  res.status(201).send(`Created a new todo item with ID : ${newTodoId}`)
+})
+
+
+// 4. PUT /todos/:id - Update an existing todo item by ID
+app.put('/todos/:id', (req, res) => {
+  const todoId = req.params.id;
+  const todoBody = req.body;
+  todoBody.id = todoId
+  let todoIdExists = false
+  myTodos.forEach((todo) => {
+    if(todo.id === todoId) {
+      todo.title = todoBody.title;
+      todo.completed = todoBody.completed;
+      todoIdExists = true;
+    }
+  })
+  if (todoIdExists){
+    updateFile(todoId, todoBody);
+    res.status(201).send(`Todo updated successfully!!!`)
+  }else{
+    res.status(404).send(`Todo id not found enter a valid Id`)
+  }
+
+})
+
+// 5. DELETE /todos/:id - Delete a todo item by ID
+app.delete('/todos/:id', (req, res) => {
+  const todoId = req.params.id;
+  let todoIdExists = false
+  myTodos.forEach((todo) => {
+    if(todo.id === todoId) {
+      myTodos.splice(myTodos.indexOf(todo), 1)
+      todoIdExists = true;
+    }
+  })
+  if (todoIdExists){
+    deleteFile(todoId)
+    res.status(200).send(`Todo deleted successfully!!!`)
+  }else{
+    res.status(404).send(`Todo id not found enter a valid Id`)
+  }
+})
+
+app.listen(port, () => {
+  console.log(`App is started at port : ${port}`)
+})
 
 module.exports = app;
