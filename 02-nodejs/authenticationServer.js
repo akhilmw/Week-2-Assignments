@@ -30,8 +30,114 @@
  */
 
 const express = require("express")
+const {v4 : uuidv4} = require('uuid');
+const bodyParser = require("body-parser")
+const dotenv = require('dotenv'); 
+const jwt = require('jsonwebtoken');
+
 const PORT = 3000;
+
 const app = express();
+dotenv.config();
+
+app.use(bodyParser.json())
+
 // write your logic here, DONT WRITE app.listen(3000) when you're running tests, the tests will automatically start the server
 
+var users = []
+
+
+//  1. POST /signup - User Signup
+app.post('/signup', (req, res) => {
+  let email = req.body.emailId;
+  let pwd = req.body.password;
+  let fName = req.body.firstName;
+  let lName = req.body.lastName
+
+  let userExists = false;
+  users.forEach((user) => {
+    if(user.email === email){
+      userExists = true;
+    }
+  })
+
+  if(!userExists){
+    const userId = uuidv4();
+    const userObj = {id : userId, emailId: email, password: pwd, firstName: fName, lastName: lName};
+    users.push(userObj);
+    res.status(201).send("User Created Successfully!!");
+  }else{
+    res.status(400).send("User already exists!!");
+  }
+
+})
+
+// 2. POST /login - User Login
+
+app.post('/login', (req, res) => {
+  let email = req.body.emailId;
+  let pwd = req.body.password;
+
+  users.forEach((user) => {
+    if(user.emailId === email){
+      if(user.password === pwd){
+        const data = {
+          time : new Date(),
+          userId : user.id
+        }
+        const jwtSecretKey = process.env.JWT_SECRET_KEY
+        const token = jwt.sign(data, jwtSecretKey)
+        res.status(200).send(token)
+      }else{
+        res.status(404).send("Invalid Credentials!!")
+      }
+    }
+  })
+
+
+})
+
+// 3. GET /data - Fetch all user's names and ids from the server (Protected route)
+
+
+var getUserDetails = () => {
+  const modifiedData = users.map(({ password, ...userDetails }) => (userDetails));
+  return {usersData : modifiedData};
+}
+
+
+app.get('/data', (req, res) => {
+  console.log(req.headers)
+  let email = req.headers['emailid']
+  let pwd = req.headers['password']
+  console.log(`${email}, ${pwd}`)
+
+  users.forEach((user) => {
+    if(user.emailId === email){
+      if(user.password === pwd){
+        const data = getUserDetails();
+        res.status(200).send(data)
+      }else{
+        res.status(404).send("Invalid Credentials!!")
+      }
+    }
+  })
+})
+
+
+app.use((req, res) => {
+  res.status(404).send("Not Found");
+})
+
+
+
+app.listen(PORT, () => {
+  console.log(`App started at port : ${PORT}`)
+})
+
 module.exports = app;
+
+
+
+
+
